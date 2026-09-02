@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug admin (:3001)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm --filter admin dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug client (:3000)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm --filter client dev",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# create-next-app flags these native deps' build scripts; left un-built for the
+# Phase 0 skeleton (next/image degrades gracefully without sharp).
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+
+# Prisma needs its postinstall scripts to download the query engine and generate the client.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma

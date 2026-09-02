@@ -1,0 +1,12 @@
+{
+  "name": "@repo/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint/base.mjs",
+    "./prettier": "./prettier/index.mjs",
+    "./tsconfig": "./typescript/base.json",
+    "./tailwind/theme.css": "./tailwind/theme.css"
+  }
+}

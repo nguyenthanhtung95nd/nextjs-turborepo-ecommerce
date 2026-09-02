@@ -1,0 +1,5 @@
+/* Shared Tailwind v4 design tokens for both apps.
+   Imported in each app's globals.css after `@import "tailwindcss";`. */
+@theme {
+  --color-brand: #4f46e5;
+}
