@@ -3,7 +3,6 @@ packages:
   - "packages/*"
 
 # create-next-app flags these native deps' build scripts; left un-built for the
-# Phase 0 skeleton (next/image degrades gracefully without sharp).
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

@@ -24,6 +24,10 @@ PostgreSQL database. Managed as a **pnpm + Turborepo monorepo**, built **databas
     - [6. Verify (smoke test)](#6-verify-smoke-test)
     - [7. Reset / teardown](#7-reset--teardown)
   - [Data model](#data-model)
+  - [Packages](#packages)
+    - [`@repo/config` - shared tooling presets](#repoconfig---shared-tooling-presets)
+    - [`@repo/db` - database client (DB-first)](#repodb---database-client-db-first)
+    - [`@repo/auth` - authentication + RBAC](#repoauth---authentication--rbac)
   - [Monorepo \& tooling](#monorepo--tooling)
     - [Why a monorepo](#why-a-monorepo)
     - [Workspaces (pnpm)](#workspaces-pnpm)
@@ -31,6 +35,7 @@ PostgreSQL database. Managed as a **pnpm + Turborepo monorepo**, built **databas
     - [Shared config (`@repo/config`)](#shared-config-repoconfig)
     - [Code-style enforcement (three layers)](#code-style-enforcement-three-layers)
     - [Editor integration (VS Code)](#editor-integration-vs-code)
+    - [Reuse in another project](#reuse-in-another-project)
   - [Scripts reference](#scripts-reference)
 
 ---
@@ -40,12 +45,13 @@ PostgreSQL database. Managed as a **pnpm + Turborepo monorepo**, built **databas
 Two independent apps share code through local packages instead of living in separate repositories
 that drift apart:
 
-| Part           | Path              | Runs on               | Role                                                             |
-| -------------- | ----------------- | --------------------- | ---------------------------------------------------------------- |
-| Admin app      | `apps/admin`      | http://localhost:3001 | Back office - catalog, users, roles/permissions (RBAC)           |
-| Storefront app | `apps/client`     | http://localhost:3000 | Customer-facing - browse, filter, search, auth                   |
-| Shared config  | `packages/config` | -                     | ESLint / Prettier / tsconfig / Tailwind presets (`@repo/config`) |
-| Database layer | `packages/db`     | -                     | Generated Prisma client over the SQL schema (`@repo/db`)         |
+| Part           | Path              | Runs on               | Role                                                              |
+| -------------- | ----------------- | --------------------- | ----------------------------------------------------------------- |
+| Admin app      | `apps/admin`      | http://localhost:3001 | Back office - catalog, users, roles/permissions (RBAC)            |
+| Storefront app | `apps/client`     | http://localhost:3000 | Customer-facing - browse, filter, search, auth                    |
+| Shared config  | `packages/config` | -                     | ESLint / Prettier / tsconfig / Tailwind presets (`@repo/config`)  |
+| Database layer | `packages/db`     | -                     | Generated Prisma client over the SQL schema (`@repo/db`)          |
+| Auth + RBAC    | `packages/auth`   | -                     | Auth.js v5 (Credentials + JWT) + permission guards (`@repo/auth`) |
 
 **Design principles that shape everything here:**
 
@@ -81,7 +87,8 @@ nextjs-playground/
 │   └── client/             # Next.js storefront    → :3000
 ├── packages/
 │   ├── config/             # shared ESLint / Prettier / tsconfig / Tailwind  (@repo/config)
-│   └── db/                 # Prisma client (generated) + server-only singleton (@repo/db)
+│   ├── db/                 # Prisma client (generated) + server-only singleton (@repo/db)
+│   └── auth/               # Auth.js v5 (Credentials + JWT) + RBAC guards (@repo/auth)
 ├── database/               # DATABASE-FIRST: the SQL source of truth
 │   ├── migrations/         # 001…009 - CREATE TABLE scripts, applied in order
 │   └── seed/
@@ -301,6 +308,76 @@ is **dynamic RBAC** (users ↔ roles ↔ permissions).
 
 ---
 
+## Packages
+
+Shared building blocks under `packages/*`. Apps import them by name (`@repo/*`); packages never
+import apps. Each is a `workspace:*` dependency, ships **no build step**, and exposes its TypeScript
+source directly (apps compile it via `transpilePackages`).
+
+| Package        | Import         | Purpose                                         | Runtime      |
+| -------------- | -------------- | ----------------------------------------------- | ------------ |
+| `@repo/config` | `@repo/config` | ESLint / Prettier / tsconfig / Tailwind presets | No (config)  |
+| `@repo/db`     | `@repo/db`     | Generated Prisma client over the SQL schema     | Yes (server) |
+| `@repo/auth`   | `@repo/auth`   | Auth.js v5 (Credentials + JWT) + RBAC guards    | Yes (server) |
+
+### `@repo/config` - shared tooling presets
+
+Single source of truth for lint/format/TS/Tailwind, consumed via subpath exports:
+
+| Export                            | Consumed by                                                     |
+| --------------------------------- | --------------------------------------------------------------- |
+| `@repo/config/eslint`             | each app's `eslint.config.mjs` + the root `eslint.config.mjs`   |
+| `@repo/config/prettier`           | root `prettier.config.mjs` (re-export) - governs the whole repo |
+| `@repo/config/tsconfig`           | every `tsconfig.json` via `"extends"`                           |
+| `@repo/config/tailwind/theme.css` | each app's `globals.css` via `@import`                          |
+
+### `@repo/db` - database client (DB-first)
+
+Prisma is a **generated client only** - the SQL in `database/` owns the schema. Exposes one
+server-only `prisma` singleton plus the generated model types.
+
+```ts
+import { prisma } from "@repo/db"; // server-side only (Server Components, route handlers, actions)
+```
+
+- **Config:** `prisma/schema.prisma` sets the generator (`prisma-client-js`, output
+  `src/generated/prisma`) + datasource (`env("DATABASE_URL")`). The generated client is **gitignored**
+  - (re)generate it with `pnpm --filter @repo/db run db:pull` (see [Database setup](#database-setup)).
+- **Needs** `packages/db/.env` with `DATABASE_URL`.
+- **Consumers** set `transpilePackages: ["@repo/db"]` + `serverExternalPackages: ["@prisma/client"]`.
+
+### `@repo/auth` - authentication + RBAC
+
+Auth.js v5 with the Credentials provider (bcrypt) and a **JWT** session carrying the user's
+**permission union**. Shared by both apps; the login UI is per-app (later phases).
+
+| Export                        | Use                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| `handlers`                    | `export const { GET, POST } = handlers` in `app/api/auth/[...nextauth]/route.ts` |
+| `auth()`                      | read the current session in Server Components / actions                          |
+| `requirePermission(key)`      | server guard - throws `ForbiddenError` (403) when the session lacks `key`        |
+| `hasPermission(session, key)` | boolean check (UX-level)                                                         |
+| `PERMISSIONS` / `Permission`  | hardcoded permission catalog - must match `database/seed/reference/`             |
+
+```ts
+// server action, gated server-side (hiding the button is only cosmetic)
+import { requirePermission } from "@repo/auth";
+
+export async function deleteProduct(id: string) {
+  await requirePermission("product:delete"); // throws 403 if the session lacks it
+  // ...delete
+}
+```
+
+- **Config:** each app needs `AUTH_SECRET` + `DATABASE_URL` (copy `apps/<app>/.env.example` →
+  `.env.local`; generate the secret with `npx auth secret`), sets
+  `transpilePackages: ["@repo/auth", "@repo/db"]`, and wires the route above. `next`/`react` are
+  **peerDependencies** (supplied by the apps).
+- **Tests:** `pnpm --filter @repo/auth test` - Vitest unit tests + a DB-backed integration test
+  (self-skips when no DB is available).
+
+---
+
 ## Monorepo & tooling
 
 ### Why a monorepo
@@ -326,7 +403,7 @@ packages:
   - "packages/*" # every shared package
 ```
 
-An app then depends on a local package with the **`workspace:*`** protocol — "use the in-repo copy,
+An app then depends on a local package with the **`workspace:*`** protocol - "use the in-repo copy,
 not a version from npm":
 
 ```json
@@ -337,18 +414,18 @@ not a version from npm":
 (`postinstall`, etc.) as a supply-chain safeguard; you opt specific packages back in:
 
 ```yaml
-onlyBuiltDependencies: # allowlist — only these may run install scripts
+onlyBuiltDependencies: # allowlist - only these may run install scripts
   - prisma # postinstall downloads its query engine + generates the client
   - "@prisma/client"
   - "@prisma/engines"
 ignoredBuiltDependencies: # intentionally skipped (silences the warning)
-  - sharp # next/image optimizer — works without it, just slower
+  - sharp # next/image optimizer - works without it, just slower
   - unrs-resolver
 ```
 
 | Field                      | Meaning                                         |
 | -------------------------- | ----------------------------------------------- |
-| `onlyBuiltDependencies`    | Allowlist — only these run their install script |
+| `onlyBuiltDependencies`    | Allowlist - only these run their install script |
 | `ignoredBuiltDependencies` | Intentionally not built; no warning             |
 
 ### Turborepo pipeline
@@ -372,7 +449,7 @@ Each key under `tasks` maps to a `package.json` script of the same name; `turbo 
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
 | `dependsOn: ["^build"]` | `^` = build my **upstream dependencies** first; `"build"` without `^` = a task in the same package |
 | `outputs`               | Files Turbo caches after the task (`!` excludes a path); restored instantly on a cache hit         |
-| `cache: false`          | Don't cache — used for `dev` (nothing to cache)                                                    |
+| `cache: false`          | Don't cache - used for `dev` (nothing to cache)                                                    |
 | `persistent: true`      | Long-running task that never exits (dev servers)                                                   |
 
 **How caching works:** Turbo hashes each task's inputs (source files + dependencies + task config +
@@ -478,17 +555,17 @@ Four rules that always carry over:
 
 Run from the repo root:
 
-| Command                         | Effect                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------- |
-| `pnpm dev`                      | Start both apps (Turbopack) - admin :3001, client :3000                   |
-| `pnpm build`                    | Production build of all workspaces (Turborepo, cached)                    |
-| `pnpm lint`                     | ESLint across all workspaces                                              |
-| `pnpm typecheck`                | `next typegen` + `tsc --noEmit` across all workspaces                     |
-| `pnpm test`                     | Run tests across all workspaces (none yet - placeholder for later phases) |
-| `pnpm format`                   | Prettier: format and write every file in the repo                         |
-| `pnpm format:check`             | Prettier: check formatting only, no writes (used in CI)                   |
-| `pnpm prepare`                  | Runs automatically after `pnpm install`; installs the Husky git hooks     |
-| `pnpm --filter <name> <script>` | Run a script in one workspace only                                        |
+| Command                         | Effect                                                                |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `pnpm dev`                      | Start both apps (Turbopack) - admin :3001, client :3000               |
+| `pnpm build`                    | Production build of all workspaces (Turborepo, cached)                |
+| `pnpm lint`                     | ESLint across all workspaces                                          |
+| `pnpm typecheck`                | `next typegen` + `tsc --noEmit` across all workspaces                 |
+| `pnpm test`                     | Run tests across all workspaces (Vitest - currently `@repo/auth`)     |
+| `pnpm format`                   | Prettier: format and write every file in the repo                     |
+| `pnpm format:check`             | Prettier: check formatting only, no writes (used in CI)               |
+| `pnpm prepare`                  | Runs automatically after `pnpm install`; installs the Husky git hooks |
+| `pnpm --filter <name> <script>` | Run a script in one workspace only                                    |
 
 Database scripts live in the `@repo/db` package (not the root):
 

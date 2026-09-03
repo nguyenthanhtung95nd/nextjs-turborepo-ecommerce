@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {/* config options here */};
+const nextConfig: NextConfig = {
+  transpilePackages: ["@repo/auth", "@repo/db"],
+  serverExternalPackages: ["@prisma/client"],
+};
 
 export default nextConfig;
