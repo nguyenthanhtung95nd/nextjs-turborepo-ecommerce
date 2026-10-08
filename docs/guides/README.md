@@ -22,6 +22,7 @@ Trong mỗi nhóm project, thứ tự luôn là: **overview** (là gì, làm gì
 | [01-getting-started.md](./01-getting-started.md) | Làm sao chạy được cả ba service trên máy tôi? |
 | [02-packages.md](./02-packages.md) | `@repo/*` nào chứa gì, khi nào import cái nào? |
 | [03-add-a-feature.md](./03-add-a-feature.md) | Thêm một tính năng chạm cả ba project thì làm theo thứ tự nào? |
+| [04-ui-components.md](./04-ui-components.md) | Primitive của design system viết thế nào? Vì sao props không dùng `interface Props`? |
 
 ## API — `apps/api` (NestJS, cổng 3002)
 
@@ -61,6 +62,7 @@ Trong mỗi nhóm project, thứ tự luôn là: **overview** (là gì, làm gì
 | Hiểu toàn hệ thống trước khi sửa gì | `00` → `10` → `20` → `30` |
 | Học NestJS từ đầu | `10` → `11` → `12` → `13` → `14` |
 | Học Next.js App Router từ đầu | `20` → `21` → `22`, rồi `30` → `31` → `32` |
+| Viết hoặc sửa component dùng chung | `04` → `02` |
 | Hiểu BFF và vì sao token không xuống trình duyệt | `00` → `20` → `14` |
 | Thêm một tính năng mới | `03` → `15` → `23` |
 | Sửa một màn hình admin đang hỏng | `22` → `21` |

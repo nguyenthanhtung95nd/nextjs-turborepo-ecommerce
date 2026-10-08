@@ -1,44 +1,35 @@
 "use client";
 
-import * as React from "react";
+import type { ComponentProps } from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 import { cn } from "../lib/cn";
 
-export const Avatar = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Root
-    ref={ref}
-    className={cn("relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full", className)}
-    {...props}
-  />
-));
-Avatar.displayName = "Avatar";
+export function Avatar({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Root>) {
+  return (
+    <AvatarPrimitive.Root
+      className={cn("relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full", className)}
+      {...props}
+    />
+  );
+}
 
-export const AvatarImage = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
-    ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
-  />
-));
-AvatarImage.displayName = "AvatarImage";
+export function AvatarImage({ className, ...props }: ComponentProps<typeof AvatarPrimitive.Image>) {
+  return (
+    <AvatarPrimitive.Image className={cn("aspect-square h-full w-full", className)} {...props} />
+  );
+}
 
-export const AvatarFallback = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
-    ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground",
-      className,
-    )}
-    {...props}
-  />
-));
-AvatarFallback.displayName = "AvatarFallback";
+export function AvatarFallback({
+  className,
+  ...props
+}: ComponentProps<typeof AvatarPrimitive.Fallback>) {
+  return (
+    <AvatarPrimitive.Fallback
+      className={cn(
+        "flex h-full w-full items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
+}

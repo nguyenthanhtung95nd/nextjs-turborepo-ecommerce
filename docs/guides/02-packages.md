@@ -136,6 +136,9 @@ import { formatMoney } from "@repo/ui/format";
 Component ở đây là loại **không biết gì về nghiệp vụ**. `ProductCard` không nằm đây — nó biết sản
 phẩm là gì, nên nó thuộc về app.
 
+Cách viết một primitive — props, `cn`, `cva`, `asChild`, `"use client"` — nằm ở
+[Viết component cho `@repo/ui`](./04-ui-components.md).
+
 ---
 
 ## `@repo/auth` — phiên đăng nhập và phân quyền
@@ -193,4 +196,5 @@ Một chỗ sửa, mọi project đổi theo — đó là lý do cấu hình kh�
 ## Đọc tiếp
 
 - [Kiến trúc](./00-architecture.md) — vì sao chia thành ba project
+- [Viết component cho `@repo/ui`](./04-ui-components.md)
 - [Thêm một tính năng](./03-add-a-feature.md) — package nào đụng trước

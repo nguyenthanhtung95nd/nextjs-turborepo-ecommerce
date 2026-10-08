@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import type { ComponentProps } from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { type VariantProps, cva } from "class-variance-authority";
 import { X } from "lucide-react";
@@ -9,18 +9,16 @@ import { cn } from "../lib/cn";
 export const Sheet = SheetPrimitive.Root;
 export const SheetTrigger = SheetPrimitive.Trigger;
 export const SheetClose = SheetPrimitive.Close;
+export const SheetDescription = SheetPrimitive.Description;
 
-const SheetOverlay = React.forwardRef<
-  React.ComponentRef<typeof SheetPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/50", className)}
-    {...props}
-  />
-));
-SheetOverlay.displayName = "SheetOverlay";
+function SheetOverlay({ className, ...props }: ComponentProps<typeof SheetPrimitive.Overlay>) {
+  return (
+    <SheetPrimitive.Overlay
+      className={cn("fixed inset-0 z-50 bg-black/50", className)}
+      {...props}
+    />
+  );
+}
 
 const sheetVariants = cva("fixed z-50 flex flex-col bg-background shadow-lg focus:outline-none", {
   variants: {
@@ -32,42 +30,36 @@ const sheetVariants = cva("fixed z-50 flex flex-col bg-background shadow-lg focu
   defaultVariants: { side: "left" },
 });
 
-export const SheetContent = React.forwardRef<
-  React.ComponentRef<typeof SheetPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & VariantProps<typeof sheetVariants>
->(({ side = "left", className, children, ...props }, ref) => (
-  <SheetPrimitive.Portal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      tabIndex={-1}
-      // Radix's own open-focus only considers form controls, so a drawer built from links drops
-      // the user onto whichever input happens to sit in the middle of it — past content they
-      // never knew was there. Focusing the panel instead announces its title and makes Tab walk
-      // the drawer from the top. Declared before the spread so a caller can still override it.
-      onOpenAutoFocus={(event) => {
-        event.preventDefault();
-        (event.currentTarget as HTMLElement | null)?.focus();
-      }}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <X className="size-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPrimitive.Portal>
-));
-SheetContent.displayName = "SheetContent";
+type SheetContentProps = ComponentProps<typeof SheetPrimitive.Content> &
+  VariantProps<typeof sheetVariants>;
 
-export const SheetTitle = React.forwardRef<
-  React.ComponentRef<typeof SheetPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title ref={ref} className={cn("text-sm font-semibold", className)} {...props} />
-));
-SheetTitle.displayName = "SheetTitle";
+export function SheetContent({ side = "left", className, children, ...props }: SheetContentProps) {
+  return (
+    <SheetPrimitive.Portal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        tabIndex={-1}
+        // Radix's own open-focus only considers form controls, so a drawer built from links drops
+        // the user onto whichever input happens to sit in the middle of it — past content they
+        // never knew was there. Focusing the panel instead announces its title and makes Tab walk
+        // the drawer from the top. Declared before the spread so a caller can still override it.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)?.focus();
+        }}
+        className={cn(sheetVariants({ side }), className)}
+        {...props}
+      >
+        {children}
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <X className="size-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      </SheetPrimitive.Content>
+    </SheetPrimitive.Portal>
+  );
+}
 
-export const SheetDescription = SheetPrimitive.Description;
+export function SheetTitle({ className, ...props }: ComponentProps<typeof SheetPrimitive.Title>) {
+  return <SheetPrimitive.Title className={cn("text-sm font-semibold", className)} {...props} />;
+}

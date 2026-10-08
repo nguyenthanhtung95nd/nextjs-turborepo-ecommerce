@@ -104,7 +104,7 @@ Setup, monorepo and database live in this file. The deeper explanations live in
 
 | Block | Guides                                                                                      |
 | ----- | ------------------------------------------------------------------------------------------- |
-| `0x`  | Architecture · getting started · shared packages · adding a feature                         |
+| `0x`  | Architecture · getting started · shared packages · adding a feature · UI components         |
 | `1x`  | API: overview · structure · request lifecycle · data access · authentication · new endpoint |
 | `2x`  | ADMIN: overview · structure · data flow · new screen                                        |
 | `3x`  | CLIENT: overview · structure · data fetching                                                |
