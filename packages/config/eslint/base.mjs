@@ -1,5 +1,5 @@
 // Shared ESLint base for the whole repo — correctness rules only (Prettier owns formatting).
-// Spread into each app's Next.js config, and used directly at the repo root by lint-staged.
+// Spread into each app's Next.js config, and used directly by the root config for packages/*.
 export default [
   {
     rules: {

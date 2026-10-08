@@ -1,27 +1,10 @@
 import type { Session } from "next-auth";
+import type { Permission } from "@repo/contracts";
 
-// The permission catalog and the code-side source of truth. These keys MUST match
-// database/seed/reference/01_permissions.sql — the RBAC checks only work if both agree.
-export const PERMISSIONS = [
-  "product:create",
-  "product:read",
-  "product:update",
-  "product:delete",
-  "category:manage",
-  "brand:manage",
-  "user:manage",
-  "role:manage",
-] as const;
+export { PERMISSIONS, permissionUnion, type Permission } from "@repo/contracts";
 
-export type Permission = (typeof PERMISSIONS)[number];
-
-// Flatten every role's permission keys into one deduped list. Pure (no DB) so it can be
-// unit-tested directly; the jwt callback feeds it a user's real roles at sign-in.
-export function permissionUnion(rolePermissionKeys: readonly (readonly string[])[]): string[] {
-  return [...new Set(rolePermissionKeys.flat())];
-}
-
+/** Whether a session carries a permission. UX only — the API re-checks on every request. */
 export function hasPermission(session: Session | null | undefined, key: Permission): boolean {
-  const perms = session?.user?.permissions;
-  return Array.isArray(perms) && perms.includes(key);
+  const granted = session?.user?.permissions;
+  return Array.isArray(granted) && granted.includes(key);
 }

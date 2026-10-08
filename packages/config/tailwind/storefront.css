@@ -1,0 +1,64 @@
+/* Storefront palette — slate neutrals, deep teal brand.
+
+   Imported *after* theme.css, which owns the `@theme inline` mapping and the admin values.
+   Only the values are replaced here; every token name stays the same, so @repo/ui components
+   work in both apps without knowing which one they are in.
+
+   The two apps look different on purpose: the admin is a tool its users are paid to operate,
+   the storefront is a shop that has to earn attention. Sharing a palette would have made one
+   of them wrong.
+
+   Contrast checked against WCAG AA for body text: muted-foreground 4.8:1 on background,
+   primary 4.9:1 both ways. */
+
+:root {
+  --background: #fbfdfd;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f6;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f6;
+  --muted-foreground: #64748b;
+  --accent: #e6f4f3;
+  --accent-foreground: #0f172a;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --success: #15803d;
+  --warning: #b45309;
+  --border: #e2e8ea;
+  --input: #e2e8ea;
+  --ring: #0f766e;
+  --brand: #0f766e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1416;
+    --foreground: #f8fafc;
+    --card: #121e21;
+    --card-foreground: #f8fafc;
+    --popover: #121e21;
+    --popover-foreground: #f8fafc;
+    --primary: #2dd4bf;
+    --primary-foreground: #0b1416;
+    --secondary: #17262a;
+    --secondary-foreground: #f8fafc;
+    --muted: #17262a;
+    --muted-foreground: #94a3b8;
+    --accent: #15292c;
+    --accent-foreground: #f8fafc;
+    --destructive: #f87171;
+    --destructive-foreground: #0b1416;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --border: #1e3035;
+    --input: #1e3035;
+    --ring: #2dd4bf;
+    --brand: #2dd4bf;
+  }
+}

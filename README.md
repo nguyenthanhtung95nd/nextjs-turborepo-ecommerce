@@ -1,80 +1,132 @@
-# E-Commerce Platform - Admin + Storefront Monorepo
+# E-Commerce Platform - API + Admin + Storefront Monorepo
 
-Learning and self building: **two Next.js (App Router) applications** - a back-office
-**admin** app and a customer **storefront** - sharing one design system, one set of tooling, and one
-PostgreSQL database. Managed as a **pnpm + Turborepo monorepo**, built **database-first**.
+Learning and self building: a **NestJS API** plus **two Next.js (App Router) applications** - a
+back-office **admin** app and a customer **storefront**. The API owns the business rules and is the
+only process that opens a database connection; both Next apps are BFFs that call it over REST.
+Managed as a **pnpm + Turborepo monorepo**, built **database-first**.
 
 ---
 
 ## Contents
 
-- [E-Commerce Platform - Admin + Storefront Monorepo](#e-commerce-platform---admin--storefront-monorepo)
-  - [Contents](#contents)
-  - [Overview](#overview)
-  - [Tech stack](#tech-stack)
-  - [Repository layout](#repository-layout)
-  - [Prerequisites](#prerequisites)
-  - [Quick start (run the apps)](#quick-start-run-the-apps)
-  - [Database setup](#database-setup)
-    - [1. Start PostgreSQL with Docker](#1-start-postgresql-with-docker)
-    - [2. Connect with DBeaver](#2-connect-with-dbeaver)
-    - [3. Create the schema](#3-create-the-schema)
-    - [4. Seed data](#4-seed-data)
-    - [5. Generate the Prisma client](#5-generate-the-prisma-client)
-    - [6. Verify (smoke test)](#6-verify-smoke-test)
-    - [7. Reset / teardown](#7-reset--teardown)
-  - [Data model](#data-model)
-  - [Packages](#packages)
-    - [`@repo/config` - shared tooling presets](#repoconfig---shared-tooling-presets)
-    - [`@repo/db` - database client (DB-first)](#repodb---database-client-db-first)
-    - [`@repo/auth` - authentication + RBAC](#repoauth---authentication--rbac)
-  - [Monorepo \& tooling](#monorepo--tooling)
-    - [Why a monorepo](#why-a-monorepo)
-    - [Workspaces (pnpm)](#workspaces-pnpm)
-    - [Turborepo pipeline](#turborepo-pipeline)
-    - [Shared config (`@repo/config`)](#shared-config-repoconfig)
-    - [Code-style enforcement (three layers)](#code-style-enforcement-three-layers)
-    - [Editor integration (VS Code)](#editor-integration-vs-code)
-    - [Reuse in another project](#reuse-in-another-project)
-  - [Scripts reference](#scripts-reference)
+- [Overview](#overview)
+  - [Rendering models](#rendering-models)
+- [Documentation](#documentation)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Prerequisites](#prerequisites)
+- [Quick start (run the three services)](#quick-start-run-the-three-services)
+- [Database setup](#database-setup)
+  - [1. Start PostgreSQL with Docker](#1-start-postgresql-with-docker)
+  - [2. Connect with DBeaver](#2-connect-with-dbeaver)
+  - [3. Create the schema](#3-create-the-schema)
+  - [4. Seed data](#4-seed-data)
+  - [5. Generate the Prisma client](#5-generate-the-prisma-client)
+  - [6. Verify (smoke test)](#6-verify-smoke-test)
+  - [7. Reset / teardown](#7-reset--teardown)
+- [Data model](#data-model)
+- [Packages](#packages)
+  - [`@repo/config` - shared tooling presets](#repoconfig---shared-tooling-presets)
+  - [`@repo/contracts` - the shared vocabulary](#repocontracts---the-shared-vocabulary)
+  - [`@repo/api-client` - the one way to call the API](#repoapi-client---the-one-way-to-call-the-api)
+  - [`@repo/ui` - shared React components](#repoui---shared-react-components)
+  - [`@repo/auth` - authentication + RBAC](#repoauth---authentication--rbac)
+- [Monorepo \& tooling](#monorepo--tooling)
+  - [Why a monorepo](#why-a-monorepo)
+  - [Workspaces (pnpm)](#workspaces-pnpm)
+  - [Turborepo pipeline](#turborepo-pipeline)
+  - [Shared config (`@repo/config`)](#shared-config-repoconfig)
+  - [Code-style enforcement (two layers)](#code-style-enforcement-two-layers)
+  - [Editor integration (VS Code)](#editor-integration-vs-code)
+  - [Reuse in another project](#reuse-in-another-project)
+- [Scripts reference](#scripts-reference)
 
 ---
 
 ## Overview
 
-Two independent apps share code through local packages instead of living in separate repositories
-that drift apart:
+Three services share code through local packages instead of living in separate repositories that
+drift apart:
 
-| Part           | Path              | Runs on               | Role                                                              |
-| -------------- | ----------------- | --------------------- | ----------------------------------------------------------------- |
-| Admin app      | `apps/admin`      | http://localhost:3001 | Back office - catalog, users, roles/permissions (RBAC)            |
-| Storefront app | `apps/client`     | http://localhost:3000 | Customer-facing - browse, filter, search, auth                    |
-| Shared config  | `packages/config` | -                     | ESLint / Prettier / tsconfig / Tailwind presets (`@repo/config`)  |
-| Database layer | `packages/db`     | -                     | Generated Prisma client over the SQL schema (`@repo/db`)          |
-| Auth + RBAC    | `packages/auth`   | -                     | Auth.js v5 (Credentials + JWT) + permission guards (`@repo/auth`) |
+| Part           | Path                  | Runs on               | Role                                                              |
+| -------------- | --------------------- | --------------------- | ----------------------------------------------------------------- |
+| API            | `apps/api`            | http://localhost:3002 | NestJS - business rules, RBAC, the only Prisma connection         |
+| Admin app      | `apps/admin`          | http://localhost:3001 | Back office - catalog, users, roles/permissions (RBAC)            |
+| Storefront app | `apps/client`         | http://localhost:3000 | Customer-facing - browse, filter, search, auth                    |
+| Contracts      | `packages/contracts`  | -                     | Zod schemas + DTO types shared by the API and both BFFs           |
+| API client     | `packages/api-client` | -                     | `apiFetch` - the server-side way to call the API                  |
+| Shared UI      | `packages/ui`         | -                     | React components shared by both apps (`@repo/ui`)                 |
+| Shared config  | `packages/config`     | -                     | ESLint / Prettier / tsconfig / Tailwind presets (`@repo/config`)  |
+| Auth + RBAC    | `packages/auth`       | -                     | Auth.js v5 (Credentials + JWT) + permission guards (`@repo/auth`) |
+
+Requests flow one way, and the browser never holds an API token:
+
+```
+Browser  --httpOnly cookie-->  ADMIN / CLIENT  --Bearer JWT-->  API  --Prisma-->  PostgreSQL
+                                (the BFF layer)
+```
 
 **Design principles that shape everything here:**
 
 - **Database-first.** Hand-written SQL in `database/` is the source of truth. Prisma is only a
   **generated client** (`prisma db pull`), never the schema owner - there is no `prisma migrate`.
 - **One-way dependencies.** `apps/*` may import `packages/*`; packages never import apps.
+- **Only the API touches the database.** Prisma lives inside `apps/api`; neither Next app has a
+  client to import, and neither needs `DATABASE_URL`.
 - **Tooling is centralized.** Lint, format, and TypeScript rules live once in `@repo/config` and are
   consumed everywhere, so nothing drifts.
+
+### Rendering models
+
+The two Next.js apps are both BFFs, but they render in opposite ways because they serve opposite
+needs. Knowing which model an app uses is the first thing to establish before changing its code.
+
+|                   | **ADMIN** (back office)           | **CLIENT** (storefront)               |
+| ----------------- | --------------------------------- | ------------------------------------- |
+| Model             | SPA - data fetched in the browser | Server-first - data fetched on render |
+| Who calls the API | Route handlers under `app/api/`   | Server Components and server actions  |
+| Browser talks to  | `/api/...` on its own origin      | Nothing - it receives rendered HTML   |
+| Data library      | TanStack Query                    | Next's `fetch` (cache + ISR)          |
+| Folder layout     | `features/<domain>/`              | `components/` + `lib/`                |
+| SEO               | Not needed (sign-in required)     | A requirement                         |
+| Server actions    | None                              | Used for auth and account writes      |
+
+Either way the browser holds only an `httpOnly` cookie: the API token stays on the Next server.
+ADMIN being a SPA does not weaken that - its browser calls a same-origin route handler, and that
+handler is what swaps the cookie for a bearer token.
+
+---
+
+## Documentation
+
+Setup, monorepo and database live in this file. The deeper explanations live in
+**[docs/guides/](docs/guides/README.md)**, written in Vietnamese, one question per file.
+
+| Block | Guides                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------- |
+| `0x`  | Architecture · getting started · shared packages · adding a feature                         |
+| `1x`  | API: overview · structure · request lifecycle · data access · authentication · new endpoint |
+| `2x`  | ADMIN: overview · structure · data flow · new screen                                        |
+| `3x`  | CLIENT: overview · structure · data fetching                                                |
+
+Start at [docs/guides/README.md](docs/guides/README.md) - it lists reading orders by goal
+("I want to learn NestJS", "I want to add a feature", "I need to fix a broken admin screen").
 
 ---
 
 ## Tech stack
 
-| Layer             | Choice                                                  |
-| ----------------- | ------------------------------------------------------- |
-| Framework         | Next.js 16 (App Router, Turbopack) · React 19           |
-| Language          | TypeScript 5 (strict)                                   |
-| Styling           | Tailwind CSS v4                                         |
-| Database          | PostgreSQL 16                                           |
-| ORM (client only) | Prisma 6 (introspected via `db pull`)                   |
-| Monorepo          | pnpm workspaces + Turborepo                             |
-| Quality           | ESLint 9 (flat config) · Prettier · Husky + lint-staged |
-| Runtime           | Node.js 22 · pnpm 10.33.0                               |
+| Layer             | Choice                                        |
+| ----------------- | --------------------------------------------- |
+| Framework         | Next.js 16 (App Router, Turbopack) · React 19 |
+| API framework     | NestJS 11 · nestjs-zod · Swagger (OpenAPI)    |
+| Language          | TypeScript 5 (strict)                         |
+| Styling           | Tailwind CSS v4                               |
+| Database          | PostgreSQL 16                                 |
+| ORM (client only) | Prisma 6 (introspected via `db pull`)         |
+| Monorepo          | pnpm workspaces + Turborepo                   |
+| Quality           | ESLint 9 (flat config) · Prettier             |
+| Runtime           | Node.js 22 · pnpm 10.33.0                     |
 
 ---
 
@@ -83,19 +135,29 @@ that drift apart:
 ```
 nextjs-playground/
 ├── apps/
-│   ├── admin/              # Next.js back office   → :3001
-│   └── client/             # Next.js storefront    → :3000
+│   ├── api/                # NestJS API            → :3002  (Swagger at /api/docs)
+│   │   ├── prisma/         #   schema.prisma - the generated client's source
+│   │   ├── src/prisma/     #   PrismaService + Prisma error helpers
+│   │   └── tests/          #   Vitest
+│   ├── admin/              # Next.js back office   → :3001  (SPA: features/ + route handlers)
+│   │   └── tests/          #   Vitest + Testing Library
+│   └── client/             # Next.js storefront    → :3000  (server-first: components/ + lib/)
+│       └── tests/          #   Vitest + Testing Library
 ├── packages/
 │   ├── config/             # shared ESLint / Prettier / tsconfig / Tailwind  (@repo/config)
-│   ├── db/                 # Prisma client (generated) + server-only singleton (@repo/db)
+│   ├── contracts/          # Zod schemas + DTO types shared by API and BFFs (@repo/contracts)
+│   ├── api-client/         # apiFetch - the single way to call the API (@repo/api-client)
+│   ├── ui/                 # React components shared by both apps (@repo/ui)
 │   └── auth/               # Auth.js v5 (Credentials + JWT) + RBAC guards (@repo/auth)
 ├── database/               # DATABASE-FIRST: the SQL source of truth
 │   ├── migrations/         # 001…009 - CREATE TABLE scripts, applied in order
 │   └── seed/
 │       ├── reference/      # permission catalog - seeded in EVERY environment
 │       └── dev/            # baseline roles + a dev admin - LOCAL ONLY
-├── docs/                   # PRD + implementation plan
-├── .husky/                 # git hooks (pre-commit → lint-staged)
+├── docs/
+│   ├── guides/             # the technical guides - start at docs/guides/README.md
+│   ├── prd/                # product requirement documents
+│   └── plans/              # phased implementation plans
 ├── .vscode/                # editor settings, debug launch configs, extensions
 ├── package.json            # root scripts + dev tools
 ├── pnpm-workspace.yaml     # declares workspaces
@@ -118,27 +180,40 @@ nextjs-playground/
 
 ---
 
-## Quick start (run the apps)
+## Quick start (run the three services)
 
-The apps run on their own - you do **not** need the database to see them render.
+Every page reads its data through the API, so the database and the API have to be up before the
+apps show anything. Start with [Database setup](#database-setup), then:
 
 ```bash
 corepack enable          # activates the pinned pnpm version
-pnpm install             # installs all workspaces + sets up git hooks
-pnpm dev                 # starts BOTH apps
+pnpm install             # installs all workspaces
+pnpm dev                 # starts the API and BOTH apps
 ```
 
 - Storefront → **http://localhost:3000**
 - Admin → **http://localhost:3001**
+- API → **http://localhost:3002** (Swagger at **/api/docs**)
 
-Run a single app with a filter:
+Run a single service with a filter - the API still has to be running for either app to load:
 
 ```bash
+pnpm --filter api dev        # API only
 pnpm --filter admin dev      # admin only
 pnpm --filter client dev     # storefront only
 ```
 
-To work on data-backed features, continue to [Database setup](#database-setup).
+`pnpm build` needs the API running too: the storefront prerenders its home and product pages at
+build time, and those pages fetch.
+
+Before committing, run the same checks CI does:
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test
+```
+
+A step-by-step version of this guide, in Vietnamese, is in
+[docs/guides/01-getting-started.md](docs/guides/01-getting-started.md).
 
 ---
 
@@ -206,7 +281,7 @@ Seeds are split by **where they apply** - every file is idempotent (safe to re-r
 | Folder            | Runs in                                    | Contents                                                                 |
 | ----------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
 | `seed/reference/` | **every** environment (dev, staging, prod) | Permission catalog - the single source of truth, mirrors `packages/auth` |
-| `seed/dev/`       | **local development only**                 | Baseline roles + a dev admin account                                     |
+| `seed/dev/`       | **local development only**                 | Baseline roles, a dev admin, and a demo catalog (8 files)                |
 
 **Local development** - apply reference first, then dev (assumes the `docker cp` from step 3):
 
@@ -219,7 +294,8 @@ docker exec ecommerce-postgres sh -c \
 first admin is created through a secure, env-driven bootstrap, not committed SQL.
 
 This inserts 8 permissions, 3 roles (`SUPER_ADMIN`, `CATALOG_EDITOR`, `USER_MANAGER`), their
-permission links, and one admin user.
+permission links, one admin user, and a demo catalog (categories, brands, products and images) so
+both apps have something to render.
 
 **Dev admin credentials** (local only - stored as a bcrypt hash in `seed/dev/02_admin.sql`):
 
@@ -229,21 +305,20 @@ permission links, and one admin user.
 
 ### 5. Generate the Prisma client
 
-Prisma introspects the live database and generates a type-safe client into
-`packages/db/src/generated/prisma` (gitignored):
+Prisma reads `apps/api/prisma/schema.prisma` and generates a type-safe client into
+`node_modules/@prisma/client`:
 
 ```bash
-# copy the env template and point Prisma at your database
-cp packages/db/.env.example packages/db/.env
-# packages/db/.env → DATABASE_URL="postgres://app:app@localhost:5432/ecommerce?sslmode=disable"
-
-pnpm --filter @repo/db run db:pull      # = prisma db pull + prisma generate
+# apps/api/.env must already hold DATABASE_URL - see "Configure environment variables"
+pnpm --filter api run db:pull      # = prisma db pull + prisma generate
 ```
 
-Re-run `db:pull` any time the SQL schema changes. Consume the client (server-side only) via:
+Re-run `db:pull` any time the SQL schema changes. The client is used **only inside the API**,
+through `PrismaService`:
 
 ```ts
-import { prisma } from "@repo/db";
+// apps/api/src/products/products.service.ts
+constructor(private readonly prisma: PrismaService) {}
 ```
 
 ### 6. Verify (smoke test)
@@ -263,7 +338,7 @@ GROUP BY u.email;
 -- expected: admin@local.dev | {SUPER_ADMIN} | 8
 ```
 
-Or browse the data with `pnpm --filter @repo/db run db:studio`.
+Or browse the data with `pnpm --filter api run db:studio`.
 
 ### 7. Reset / teardown
 
@@ -310,15 +385,24 @@ is **dynamic RBAC** (users ↔ roles ↔ permissions).
 
 ## Packages
 
-Shared building blocks under `packages/*`. Apps import them by name (`@repo/*`); packages never
-import apps. Each is a `workspace:*` dependency, ships **no build step**, and exposes its TypeScript
-source directly (apps compile it via `transpilePackages`).
+Shared building blocks under `packages/*`. Services import them by name (`@repo/*`); packages never
+import apps. Each is a `workspace:*` dependency.
 
-| Package        | Import         | Purpose                                         | Runtime      |
-| -------------- | -------------- | ----------------------------------------------- | ------------ |
-| `@repo/config` | `@repo/config` | ESLint / Prettier / tsconfig / Tailwind presets | No (config)  |
-| `@repo/db`     | `@repo/db`     | Generated Prisma client over the SQL schema     | Yes (server) |
-| `@repo/auth`   | `@repo/auth`   | Auth.js v5 (Credentials + JWT) + RBAC guards    | Yes (server) |
+| Package            | Imported by     | Purpose                                         | Ships   |
+| ------------------ | --------------- | ----------------------------------------------- | ------- |
+| `@repo/config`     | everything      | ESLint / Prettier / tsconfig / Tailwind presets | source  |
+| `@repo/contracts`  | API + both apps | Zod schemas + DTO types for every endpoint      | `dist/` |
+| `@repo/api-client` | both apps       | `apiFetch`, `ApiError`, `ApiUnavailableError`   | `dist/` |
+| `@repo/ui`         | both apps       | React components shared by admin and storefront | source  |
+| `@repo/auth`       | both apps       | Auth.js v5 session + RBAC guards for the BFFs   | source  |
+
+Packages the API consumes are **compiled to `dist/`**, because NestJS builds with `tsc` rather than
+a bundler and cannot transpile another package's TypeScript source. Packages only the Next apps
+consume ship source and are compiled by the app via `transpilePackages`.
+
+Prisma is deliberately **not** a shared package. It lives in `apps/api/prisma/` (the schema) and
+`apps/api/src/prisma/` (`PrismaService` and the error helpers), because the API is the only thing
+that may open a database connection - putting it in `packages/*` would advertise it as shareable.
 
 ### `@repo/config` - shared tooling presets
 
@@ -331,50 +415,95 @@ Single source of truth for lint/format/TS/Tailwind, consumed via subpath exports
 | `@repo/config/tsconfig`           | every `tsconfig.json` via `"extends"`                           |
 | `@repo/config/tailwind/theme.css` | each app's `globals.css` via `@import`                          |
 
-### `@repo/db` - database client (DB-first)
+### `@repo/contracts` - the shared vocabulary
 
-Prisma is a **generated client only** - the SQL in `database/` owns the schema. Exposes one
-server-only `prisma` singleton plus the generated model types.
+One Zod schema per request body and query string, plus the DTO type of every response. The API
+turns each schema into a NestJS DTO with `createZodDto`; the apps import the same schema to
+validate a form before it leaves the server, and the same DTO type to render the result.
 
 ```ts
-import { prisma } from "@repo/db"; // server-side only (Server Components, route handlers, actions)
+import { catalogListParamsSchema, type ProductCardDto } from "@repo/contracts";
 ```
 
-- **Config:** `prisma/schema.prisma` sets the generator (`prisma-client-js`, output
-  `src/generated/prisma`) + datasource (`env("DATABASE_URL")`). The generated client is **gitignored**
-  - (re)generate it with `pnpm --filter @repo/db run db:pull` (see [Database setup](#database-setup)).
-- **Needs** `packages/db/.env` with `DATABASE_URL`.
-- **Consumers** set `transpilePackages: ["@repo/db"]` + `serverExternalPackages: ["@prisma/client"]`.
+A field only has to change in one place, and a response shape cannot drift from what the caller
+expects - it is the same type on both ends.
+
+### `@repo/api-client` - the one way to call the API
+
+```ts
+import { apiFetch, ApiError } from "@repo/api-client";
+
+const page = await apiFetch<PageDto<ProductCardDto>>("/products?page=1", { token });
+```
+
+Reads the base URL from `API_URL`, attaches the bearer token, applies a 10s timeout, and turns a
+non-2xx response into an `ApiError` carrying the status and any field errors. Every call that
+leaves for the API goes through it, so timeouts and error shape are decided once.
+
+**Server-side only.** It needs `API_URL` and a token, neither of which exists in the browser. The
+admin's browser code calls its own route handlers with axios (`services/api-client.ts`), and those
+route handlers are what call `apiFetch`.
+
+### `@repo/ui` - shared React components
+
+Imported by subpath so a bundler can drop what an app does not use:
+
+```ts
+import { Button } from "@repo/ui/button";
+import { formatMoney } from "@repo/ui/format";
+```
+
+Ten primitives (`button` `input` `label` `select` `textarea` `badge` `avatar` `dialog`
+`dropdown-menu` `sheet`) plus four helpers: `cn`, `format`, `list-href` and `action-result`.
+Nothing here knows about the domain - `ProductCard` lives in the app that owns it.
 
 ### `@repo/auth` - authentication + RBAC
 
-Auth.js v5 with the Credentials provider (bcrypt) and a **JWT** session carrying the user's
-**permission union**. Shared by both apps; the login UI is per-app (later phases).
+Auth.js v5 holds the **session cookie** for each app. It no longer checks the password itself:
+`authorize()` posts the credentials to `POST /auth/login`, and the API's JWT is stored inside the
+`httpOnly` cookie. The browser never sees that token.
 
-| Export                        | Use                                                                              |
-| ----------------------------- | -------------------------------------------------------------------------------- |
-| `handlers`                    | `export const { GET, POST } = handlers` in `app/api/auth/[...nextauth]/route.ts` |
-| `auth()`                      | read the current session in Server Components / actions                          |
-| `requirePermission(key)`      | server guard - throws `ForbiddenError` (403) when the session lacks `key`        |
-| `hasPermission(session, key)` | boolean check (UX-level)                                                         |
-| `PERMISSIONS` / `Permission`  | hardcoded permission catalog - must match `database/seed/reference/`             |
+| Export                        | Use                                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| `handlers`                    | `export const { GET, POST } = handlers` in `app/api/auth/[...nextauth]/route.ts`   |
+| `auth()`                      | read the current session in Server Components / route handlers                     |
+| `sessionToken()`              | the API token to pass to `apiFetch`                                                |
+| `checkSession(session)`       | ask the API whether the session still works: `active` / `inactive` / `unreachable` |
+| `requirePermission(key)`      | server guard - throws `ForbiddenError` (403) when the session lacks `key`          |
+| `hasPermission(session, key)` | boolean check (UX-level)                                                           |
+| `PERMISSIONS` / `Permission`  | permission catalog, re-exported from `@repo/contracts`                             |
+
+`checkSession` returns three states, not two: a deactivated account and an unreachable API look
+identical from the client but need opposite responses - one needs an administrator, the other just
+needs time. `isSessionActive` is still exported but `@deprecated`, because it collapses the two.
+
+The guard here decides **what to render**; the API decides **what is allowed**. The API re-reads
+the account and its permissions from the database on every request, so a deactivated account is
+refused on its very next call even while its cookie is still valid.
 
 ```ts
-// server action, gated server-side (hiding the button is only cosmetic)
-import { requirePermission } from "@repo/auth";
+// apps/admin - a route handler swaps the session cookie for a bearer token
+import { sessionToken } from "@repo/auth";
+import { ApiError, apiFetch } from "@repo/api-client";
 
-export async function deleteProduct(id: string) {
-  await requirePermission("product:delete"); // throws 403 if the session lacks it
-  // ...delete
+export async function callApi<T>(path: string, method: Method = "GET", body?: unknown): Promise<T> {
+  const token = await sessionToken();
+  if (!token) throw new ApiError(401, "Sign in to continue.");
+  return apiFetch<T>(path, { method, body, token });
 }
 ```
 
-- **Config:** each app needs `AUTH_SECRET` + `DATABASE_URL` (copy `apps/<app>/.env.example` →
-  `.env.local`; generate the secret with `npx auth secret`), sets
-  `transpilePackages: ["@repo/auth", "@repo/db"]`, and wires the route above. `next`/`react` are
+ADMIN uses no server actions at all - every write goes through a route handler. CLIENT, being
+server-first, does use them for auth and account writes.
+
+- **Config:** each app needs `AUTH_SECRET`, `AUTH_COOKIE_PREFIX` and `API_URL` (copy
+  `apps/<app>/.env.example` → `.env.local`; generate the secret with `npx auth secret`), sets
+  `transpilePackages: ["@repo/auth", "@repo/ui"]`, and wires the route above. `next`/`react` are
   **peerDependencies** (supplied by the apps).
-- **Tests:** `pnpm --filter @repo/auth test` - Vitest unit tests + a DB-backed integration test
-  (self-skips when no DB is available).
+- **`AUTH_COOKIE_PREFIX` must differ between the apps.** Cookies ignore the port, so on
+  `localhost` a shared cookie name makes each app sign the other out.
+- **Tests:** `pnpm --filter @repo/auth test` - Vitest unit tests. The credential and account tests
+  moved to `apps/api` along with the logic they cover.
 
 ---
 
@@ -382,12 +511,12 @@ export async function deleteProduct(id: string) {
 
 ### Why a monorepo
 
-| Concern                           | Two separate repos    | This monorepo                           |
-| --------------------------------- | --------------------- | --------------------------------------- |
-| Shared DB layer / types           | Copy-paste or publish | One `packages/db`, imported directly    |
-| Design system + config            | Duplicated, drifts    | One `@repo/config`, consumed everywhere |
-| Build order (app needs a package) | Manual                | Turborepo resolves it topologically     |
-| Build/lint everything             | Multiple commands     | `pnpm build` / `pnpm lint`              |
+| Concern                           | Two separate repos    | This monorepo                            |
+| --------------------------------- | --------------------- | ---------------------------------------- |
+| Shared types across services      | Copy-paste or publish | One `@repo/contracts`, imported directly |
+| Design system + config            | Duplicated, drifts    | One `@repo/config`, consumed everywhere  |
+| Build order (app needs a package) | Manual                | Turborepo resolves it topologically      |
+| Build/lint everything             | Multiple commands     | `pnpm build` / `pnpm lint`               |
 
 **Dependency rule (one-way):** `apps/*` may import `packages/*`; `packages/*` must never import
 `apps/*`.
@@ -485,28 +614,15 @@ An app's `tsconfig.json` then extends the shared base:
 { "extends": "@repo/config/tsconfig", "compilerOptions": { "paths": { "@/*": ["./src/*"] } } }
 ```
 
-### Code-style enforcement (three layers)
+### Code-style enforcement (two layers)
 
 1. **Prettier owns formatting.** Shared options live in `@repo/config/prettier`; the root
    `prettier.config.mjs` re-exports them, so every file follows one style.
 2. **ESLint owns correctness** (not formatting). The shared base carries only non-formatting rules;
    each app layers Next.js rules on top.
-3. **Pre-commit hook blocks unformatted commits.** Husky runs `lint-staged` on staged files:
 
-   ```sh
-   # .husky/pre-commit
-   pnpm exec lint-staged
-   ```
-
-   ```json
-   // root package.json
-   "lint-staged": {
-     "*.{ts,tsx,js,jsx,mjs}": ["prettier --write", "eslint --fix"],
-     "*.{json,md,css}": ["prettier --write"]
-   }
-   ```
-
-Hooks install automatically via the `"prepare": "husky"` script during `pnpm install`.
+There is no pre-commit hook. Run `pnpm format` and `pnpm lint` before committing, or let the
+editor do it on save — see below.
 
 ### Editor integration (VS Code)
 
@@ -555,22 +671,25 @@ Four rules that always carry over:
 
 Run from the repo root:
 
-| Command                         | Effect                                                                |
-| ------------------------------- | --------------------------------------------------------------------- |
-| `pnpm dev`                      | Start both apps (Turbopack) - admin :3001, client :3000               |
-| `pnpm build`                    | Production build of all workspaces (Turborepo, cached)                |
-| `pnpm lint`                     | ESLint across all workspaces                                          |
-| `pnpm typecheck`                | `next typegen` + `tsc --noEmit` across all workspaces                 |
-| `pnpm test`                     | Run tests across all workspaces (Vitest - currently `@repo/auth`)     |
-| `pnpm format`                   | Prettier: format and write every file in the repo                     |
-| `pnpm format:check`             | Prettier: check formatting only, no writes (used in CI)               |
-| `pnpm prepare`                  | Runs automatically after `pnpm install`; installs the Husky git hooks |
-| `pnpm --filter <name> <script>` | Run a script in one workspace only                                    |
+| Command                         | Effect                                                          |
+| ------------------------------- | --------------------------------------------------------------- |
+| `pnpm dev`                      | Start all three services - API :3002, admin :3001, client :3000 |
+| `pnpm build`                    | Production build of all workspaces (Turborepo, cached)          |
+| `pnpm lint`                     | ESLint across all workspaces                                    |
+| `pnpm typecheck`                | `next typegen` + `tsc --noEmit` across all workspaces           |
+| `pnpm test`                     | Run tests across all workspaces (Vitest)                        |
+| `pnpm format`                   | Prettier: format and write every file in the repo               |
+| `pnpm format:check`             | Prettier: check formatting only, no writes (used in CI)         |
+| `pnpm --filter <name> <script>` | Run a script in one workspace only                              |
+| `pnpm --filter admin test`      | Run one app's tests only (same for `api`, `client`)             |
 
-Database scripts live in the `@repo/db` package (not the root):
+`pnpm build` and `pnpm dev` both need the database up, and `pnpm build` needs the API up as well -
+the storefront prerenders pages that fetch.
 
-| Command                                  | Effect                                           |
-| ---------------------------------------- | ------------------------------------------------ |
-| `pnpm --filter @repo/db run db:pull`     | Introspect the DB + regenerate the Prisma client |
-| `pnpm --filter @repo/db run db:generate` | Regenerate the client from the current schema    |
-| `pnpm --filter @repo/db run db:studio`   | Open Prisma Studio (data browser)                |
+Database scripts live in `apps/api`, the only workspace that talks to Postgres:
+
+| Command                             | Effect                                           |
+| ----------------------------------- | ------------------------------------------------ |
+| `pnpm --filter api run db:pull`     | Introspect the DB + regenerate the Prisma client |
+| `pnpm --filter api run db:generate` | Regenerate the client from the current schema    |
+| `pnpm --filter api run db:studio`   | Open Prisma Studio (data browser)                |

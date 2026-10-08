@@ -1,7 +1,9 @@
 /**
- * Root ESLint flat config. Used by the lint-staged pre-commit hook, which runs
- * `eslint` from the repo root against staged files. Each app additionally has
- * its own richer Next.js config that `turbo run lint` invokes per package.
+ * Root ESLint flat config.
+ *
+ * Covers the files no app config reaches — the `packages/*` workspaces and anything at the repo
+ * root — so an editor still lints them. Each app has its own richer Next.js config, and
+ * `turbo run lint` invokes those per package.
  */
 import { defineConfig, globalIgnores } from "eslint/config";
 import base from "@repo/config/eslint";

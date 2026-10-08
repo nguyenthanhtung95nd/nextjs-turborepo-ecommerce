@@ -12,24 +12,12 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "prepare": "husky"
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "devDependencies": {
     "@repo/config": "workspace:*",
     "eslint": "^9",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.4.1",
     "prettier": "^3.4.2",
     "turbo": "^2.3.4"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs}": [
-      "prettier --write",
-      "eslint --fix"
-    ],
-    "*.{json,md,css}": [
-      "prettier --write"
-    ]
   }
 }

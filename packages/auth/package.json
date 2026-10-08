@@ -6,19 +6,24 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./permissions": "./src/permissions.ts",
+    "./password": "./src/password.ts"
   },
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
-    "@repo/db": "workspace:*",
     "bcryptjs": "^3",
-    "next-auth": "5.0.0-beta.32"
+    "next-auth": "5.0.0-beta.32",
+    "zod": "^4.5.4",
+    "@repo/contracts": "workspace:*",
+    "@repo/api-client": "workspace:*"
   },
   "devDependencies": {
     "@repo/config": "workspace:*",
     "@types/node": "^20",
+    "@types/react": "^19",
     "typescript": "^5",
     "vitest": "^4"
   },

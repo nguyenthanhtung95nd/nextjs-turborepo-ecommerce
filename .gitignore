@@ -24,13 +24,9 @@ Thumbs.db
 
 # test / coverage
 coverage/
-playwright-report/
-test-results/
 
 # misc
 *.tsbuildinfo
 next-env.d.ts
 .claude
-docs/*
-# prisma generated client (regenerated via `pnpm db:pull`)
-packages/db/src/generated/
+.playwright-mcp/

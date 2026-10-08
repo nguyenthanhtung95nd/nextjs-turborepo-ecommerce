@@ -1,13 +1,13 @@
 import type { DefaultSession } from "next-auth";
 
-// Type the claims the session callback adds, so `session.user.id` / `.permissions` are typed
-// wherever auth() is used. (The JWT isn't augmented: @auth/core's JWT already allows arbitrary
-// keys, which the callback writes and narrows on read.)
+// Types the claims the session callback adds. `accessToken` is the API credential; it stays
+// inside the httpOnly cookie and never reaches the browser.
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       permissions: string[];
+      accessToken: string;
     } & DefaultSession["user"];
   }
 }

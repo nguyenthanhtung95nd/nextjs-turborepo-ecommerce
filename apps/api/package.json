@@ -1,0 +1,43 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main",
+    "lint": "eslint",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:pull": "prisma db pull && prisma generate",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11",
+    "@nestjs/config": "^12.0.1",
+    "@nestjs/core": "^11",
+    "@nestjs/jwt": "^12.0.2",
+    "@nestjs/platform-express": "^11",
+    "@nestjs/swagger": "^11",
+    "@prisma/client": "^6",
+    "@repo/contracts": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "nestjs-zod": "^5",
+    "reflect-metadata": "^0.2",
+    "rxjs": "^7",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11",
+    "@nestjs/schematics": "^11",
+    "@repo/config": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/express": "^5",
+    "@types/node": "^20",
+    "eslint": "^9",
+    "prisma": "^6",
+    "typescript": "^5",
+    "vitest": "^3"
+  }
+}
